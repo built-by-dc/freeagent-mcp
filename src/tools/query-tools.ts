@@ -5,6 +5,10 @@ import { getBankAccounts, buildBankAccountNameLookup } from '../resources/bank-a
 import { getBankTransactions } from '../resources/bank-transactions.js';
 import { handleToolError } from '../utils/error-handler.js';
 import type { LLMInvoice, LLMBankAccount, LLMBankTransaction } from '../types/llm/index.js';
+import type { FreeAgentBankTransaction } from '../types/freeagent/index.js';
+import { transformBankTransaction } from '../transformers/bank-transformer.js';
+import { normalizeBankAccountId } from '../utils/validators.js';
+import { FREEAGENT_API_BASE } from '../config.js';
 
 // List unpaid invoices schema
 export const listUnpaidInvoicesSchema = z.object({
@@ -201,5 +205,32 @@ export async function getUnexplainedTransactions(
     };
   } catch (error) {
     handleToolError(error, 'get_unexplained_transactions');
+  }
+}
+
+// ========== LIST BANK TRANSACTIONS ==========
+
+export const listBankTransactionsSchema = z.object({
+  bank_account_id: z.string().min(1),
+  view: z.enum(['all', 'unexplained', 'explained', 'marked_for_review', 'manual', 'imported']).optional(),
+  from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export type ListBankTransactionsInput = z.infer<typeof listBankTransactionsSchema>;
+
+export async function listBankTransactions(client: FreeAgentClient, input: ListBankTransactionsInput) {
+  try {
+    const validated = listBankTransactionsSchema.parse(input);
+    const params: Record<string, string> = {
+      bank_account: normalizeBankAccountId(validated.bank_account_id, FREEAGENT_API_BASE),
+    };
+    if (validated.view) params['view'] = validated.view;
+    if (validated.from_date) params['from_date'] = validated.from_date;
+    if (validated.to_date) params['to_date'] = validated.to_date;
+    const transactions = await client.fetchAllPages<FreeAgentBankTransaction>('/bank_transactions', 'bank_transactions', params);
+    return transactions.map((t) => transformBankTransaction(t));
+  } catch (error) {
+    handleToolError(error, 'list_bank_transactions');
   }
 }

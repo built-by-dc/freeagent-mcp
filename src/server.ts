@@ -576,6 +576,11 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         description: 'List unexplained bank transactions',
         inputSchema: zodToJsonSchema(tools.getUnexplainedTransactionsSchema),
       },
+      {
+        name: 'list_bank_transactions',
+        description: 'List bank transactions with optional view filter (all/unexplained/explained/marked_for_review/manual/imported)',
+        inputSchema: zodToJsonSchema(tools.listBankTransactionsSchema),
+      },
       // Bank transaction explanation tools
       {
         name: 'list_bank_transaction_explanations',
@@ -807,6 +812,9 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
             client,
             args as tools.GetUnexplainedTransactionsInput
           );
+          break;
+        case 'list_bank_transactions':
+          result = await tools.listBankTransactions(client, args as tools.ListBankTransactionsInput);
           break;
 
         // Bank transaction explanation tools

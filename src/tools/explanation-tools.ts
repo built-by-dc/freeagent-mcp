@@ -65,6 +65,7 @@ export const listBankTransactionExplanationsSchema = z.object({
   from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date (YYYY-MM-DD)'),
   to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date (YYYY-MM-DD)'),
   updated_since: z.string().optional().describe('ISO 8601 timestamp to filter by update time'),
+  marked_for_review: z.boolean().optional().describe('Filter by marked-for-review status'),
 });
 
 export type ListBankTransactionExplanationsInput = z.infer<typeof listBankTransactionExplanationsSchema>;
@@ -88,6 +89,9 @@ export async function listBankTransactionExplanations(
     }
     if (validated.updated_since) {
       params['updated_since'] = validated.updated_since;
+    }
+    if (validated.marked_for_review !== undefined) {
+      params['marked_for_review'] = validated.marked_for_review.toString();
     }
 
     const explanations = await client.fetchAllPages<FreeAgentBankTransactionExplanation>(
