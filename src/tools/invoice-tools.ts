@@ -241,8 +241,8 @@ export async function listInvoices(client: FreeAgentClient, input: ListInvoicesI
     const validated = listInvoicesSchema.parse(input);
     const params: Record<string, string> = {};
     if (validated.view) params['view'] = validated.view;
-    if (validated.contact_id) params['contact'] = `${FREEAGENT_API_BASE}/contacts/${validated.contact_id}`;
-    if (validated.project_id) params['project'] = `${FREEAGENT_API_BASE}/projects/${validated.project_id}`;
+    if (validated.contact_id) params['contact'] = normalizeContactId(validated.contact_id, FREEAGENT_API_BASE);
+    if (validated.project_id) params['project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
     if (validated.updated_since) params['updated_since'] = validated.updated_since;
     if (validated.sort) params['sort'] = validated.sort;
     const invoices = await client.fetchAllPages<FreeAgentInvoice>('/invoices', 'invoices', params);
