@@ -22,13 +22,11 @@ import {
   getBankTransactionExplanation,
   updateBankTransactionExplanation,
   deleteBankTransactionExplanation,
-  uploadReceipt,
   createBankTransactionExplanation,
   listBankTransactionExplanationsSchema,
   getBankTransactionExplanationSchema,
   updateBankTransactionExplanationSchema,
   deleteBankTransactionExplanationSchema,
-  uploadReceiptSchema,
   createBankTransactionExplanationSchema,
 } from '../../src/tools/explanation-tools.js';
 import type { FreeAgentClient } from '../../src/api/freeagent-client.js';
@@ -154,61 +152,6 @@ describe('Explanation Tools Schemas', () => {
         explanation_id: '123',
       });
       expect(result.success).toBe(true);
-    });
-  });
-
-  describe('uploadReceiptSchema', () => {
-    it('validates required fields', () => {
-      const result = uploadReceiptSchema.safeParse({
-        explanation_id: '123',
-        file_data: 'SGVsbG8gV29ybGQ=', // base64 "Hello World"
-        file_name: 'receipt.pdf',
-        content_type: 'application/pdf',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('validates with optional description', () => {
-      const result = uploadReceiptSchema.safeParse({
-        explanation_id: '123',
-        file_data: 'SGVsbG8gV29ybGQ=',
-        file_name: 'receipt.jpg',
-        content_type: 'image/jpeg',
-        description: 'Office receipt',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('rejects invalid content_type', () => {
-      const result = uploadReceiptSchema.safeParse({
-        explanation_id: '123',
-        file_data: 'SGVsbG8gV29ybGQ=',
-        file_name: 'document.doc',
-        content_type: 'application/msword',
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it('accepts all valid content types', () => {
-      const validTypes = [
-        'image/png',
-        'image/x-png',
-        'image/jpeg',
-        'image/jpg',
-        'image/gif',
-        'application/x-pdf',
-        'application/pdf',
-      ];
-
-      validTypes.forEach((contentType) => {
-        const result = uploadReceiptSchema.safeParse({
-          explanation_id: '123',
-          file_data: 'SGVsbG8=',
-          file_name: 'file',
-          content_type: contentType,
-        });
-        expect(result.success).toBe(true);
-      });
     });
   });
 
@@ -407,52 +350,6 @@ describe('Explanation Tools Functions', () => {
         success: true,
         message: 'Bank transaction explanation deleted',
       });
-    });
-  });
-
-  describe('uploadReceipt', () => {
-    it('uploads attachment via PUT', async () => {
-      const mockClient = createMockClient({
-        put: vi.fn().mockResolvedValue({ bank_transaction_explanation: sampleExplanation }),
-      });
-
-      const result = await uploadReceipt(mockClient, {
-        explanation_id: '123',
-        file_data: 'SGVsbG8gV29ybGQ=',
-        file_name: 'receipt.pdf',
-        content_type: 'application/pdf',
-        description: 'Receipt for office supplies',
-      });
-
-      expect(mockClient.put).toHaveBeenCalledWith(
-        '/bank_transaction_explanations/123',
-        {
-          bank_transaction_explanation: {
-            attachment: {
-              data: 'SGVsbG8gV29ybGQ=',
-              file_name: 'receipt.pdf',
-              content_type: 'application/pdf',
-              description: 'Receipt for office supplies',
-            },
-          },
-        }
-      );
-    });
-
-    it('rejects files over 5MB', async () => {
-      const mockClient = createMockClient();
-
-      // Create a base64 string that decodes to > 5MB
-      const largeData = Buffer.alloc(6 * 1024 * 1024).toString('base64');
-
-      await expect(
-        uploadReceipt(mockClient, {
-          explanation_id: '123',
-          file_data: largeData,
-          file_name: 'large.pdf',
-          content_type: 'application/pdf',
-        })
-      ).rejects.toThrow('File size exceeds 5MB limit');
     });
   });
 
