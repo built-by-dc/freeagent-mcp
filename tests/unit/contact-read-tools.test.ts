@@ -33,6 +33,11 @@ describe('listContacts', () => {
     await listContacts(mockClient, { updated_since: '2026-01-01T00:00:00Z' });
     expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/contacts', 'contacts', { updated_since: '2026-01-01T00:00:00Z' });
   });
+
+  it('propagates errors', async () => {
+    mockClient.fetchAllPages.mockRejectedValue(new Error('API error'));
+    await expect(listContacts(mockClient, {})).rejects.toThrow();
+  });
 });
 
 describe('getContact', () => {
@@ -50,5 +55,10 @@ describe('getContact', () => {
     expect(mockClient.get).toHaveBeenCalledWith('/contacts/456');
     expect(result.id).toBe('456');
     expect(result.name).toBe('Bob Smith');
+  });
+
+  it('propagates errors', async () => {
+    mockClient.get.mockRejectedValue(new Error('API error'));
+    await expect(getContact(mockClient, { contact_id: '456' })).rejects.toThrow();
   });
 });
