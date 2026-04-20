@@ -186,3 +186,263 @@ export async function createTimeslip(
     handleToolError(error, 'create_timeslip');
   }
 }
+
+// ========== LIST PROJECTS ==========
+
+export const listProjectsSchema = z.object({
+  view: z.enum(['active', 'completed', 'cancelled', 'hidden']).optional(),
+  contact_id: z.string().optional(),
+  sort: z.string().optional(),
+});
+
+export type ListProjectsInput = z.infer<typeof listProjectsSchema>;
+
+export async function listProjects(client: FreeAgentClient, input: ListProjectsInput) {
+  try {
+    const validated = listProjectsSchema.parse(input);
+    const params: Record<string, string> = {};
+    if (validated.view) params['view'] = validated.view;
+    if (validated.contact_id) params['contact'] = normalizeContactId(validated.contact_id, FREEAGENT_API_BASE);
+    if (validated.sort) params['sort'] = validated.sort;
+    const projects = await client.fetchAllPages<FreeAgentProject>('/projects', 'projects', params);
+    return projects.map((p) => transformProject(p));
+  } catch (error) {
+    handleToolError(error, 'list_projects');
+  }
+}
+
+// ========== GET PROJECT ==========
+
+export const getProjectSchema = z.object({
+  project_id: z.string().min(1),
+});
+
+export type GetProjectInput = z.infer<typeof getProjectSchema>;
+
+export async function getProject(client: FreeAgentClient, input: GetProjectInput) {
+  try {
+    const validated = getProjectSchema.parse(input);
+    const response = await client.get<{ project: FreeAgentProject }>(`/projects/${validated.project_id}`);
+    return transformProject(response.project);
+  } catch (error) {
+    handleToolError(error, 'get_project');
+  }
+}
+
+// ========== DELETE PROJECT ==========
+
+export const deleteProjectSchema = z.object({
+  project_id: z.string().min(1),
+});
+
+export type DeleteProjectInput = z.infer<typeof deleteProjectSchema>;
+
+export async function deleteProject(client: FreeAgentClient, input: DeleteProjectInput) {
+  try {
+    const validated = deleteProjectSchema.parse(input);
+    await client.delete(`/projects/${validated.project_id}`);
+    return { success: true, message: 'Project deleted' };
+  } catch (error) {
+    handleToolError(error, 'delete_project');
+  }
+}
+
+// ========== LIST TASKS ==========
+
+export const listTasksSchema = z.object({
+  project_id: z.string().optional(),
+  view: z.enum(['all', 'active', 'completed', 'hidden']).optional(),
+  sort: z.string().optional(),
+  updated_since: z.string().optional(),
+});
+
+export type ListTasksInput = z.infer<typeof listTasksSchema>;
+
+export async function listTasks(client: FreeAgentClient, input: ListTasksInput) {
+  try {
+    const validated = listTasksSchema.parse(input);
+    const params: Record<string, string> = {};
+    if (validated.project_id) params['project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
+    if (validated.view) params['view'] = validated.view;
+    if (validated.sort) params['sort'] = validated.sort;
+    if (validated.updated_since) params['updated_since'] = validated.updated_since;
+    const tasks = await client.fetchAllPages<FreeAgentTask>('/tasks', 'tasks', params);
+    return tasks.map((t) => transformTask(t));
+  } catch (error) {
+    handleToolError(error, 'list_tasks');
+  }
+}
+
+// ========== GET TASK ==========
+
+export const getTaskSchema = z.object({
+  task_id: z.string().min(1),
+});
+
+export type GetTaskInput = z.infer<typeof getTaskSchema>;
+
+export async function getTask(client: FreeAgentClient, input: GetTaskInput) {
+  try {
+    const validated = getTaskSchema.parse(input);
+    const response = await client.get<{ task: FreeAgentTask }>(`/tasks/${validated.task_id}`);
+    return transformTask(response.task);
+  } catch (error) {
+    handleToolError(error, 'get_task');
+  }
+}
+
+// ========== UPDATE TASK ==========
+
+export const updateTaskSchema = z.object({
+  task_id: z.string().min(1),
+  name: z.string().optional(),
+  is_billable: z.boolean().optional(),
+  billing_rate: z.number().optional(),
+  billing_period: z.enum(['hour', 'day', 'week', 'month', 'year']).optional(),
+  budget: z.number().optional(),
+  status: z.enum(['Active', 'Completed', 'Hidden']).optional(),
+});
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export async function updateTask(client: FreeAgentClient, input: UpdateTaskInput) {
+  try {
+    const validated = updateTaskSchema.parse(input);
+    const { task_id, ...fields } = validated;
+
+    const taskData: Record<string, unknown> = {};
+    if (fields.name !== undefined) taskData['name'] = sanitizeInput(fields.name);
+    if (fields.is_billable !== undefined) taskData['is_billable'] = fields.is_billable;
+    if (fields.billing_rate !== undefined) taskData['billing_rate'] = fields.billing_rate.toString();
+    if (fields.billing_period !== undefined) taskData['billing_period'] = fields.billing_period;
+    if (fields.budget !== undefined) taskData['budget'] = fields.budget.toString();
+    if (fields.status !== undefined) taskData['status'] = fields.status;
+
+    const response = await client.put<{ task: FreeAgentTask }>(
+      `/tasks/${task_id}`,
+      { task: taskData }
+    );
+
+    return transformTask(response.task);
+  } catch (error) {
+    handleToolError(error, 'update_task');
+  }
+}
+
+// ========== DELETE TASK ==========
+
+export const deleteTaskSchema = z.object({
+  task_id: z.string().min(1),
+});
+
+export type DeleteTaskInput = z.infer<typeof deleteTaskSchema>;
+
+export async function deleteTask(client: FreeAgentClient, input: DeleteTaskInput) {
+  try {
+    const validated = deleteTaskSchema.parse(input);
+    await client.delete(`/tasks/${validated.task_id}`);
+    return { success: true, message: 'Task deleted' };
+  } catch (error) {
+    handleToolError(error, 'delete_task');
+  }
+}
+
+// ========== LIST TIMESLIPS ==========
+
+export const listTimeslipsSchema = z.object({
+  from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  view: z.enum(['all', 'unbilled', 'running']).optional(),
+  project_id: z.string().optional(),
+  task_id: z.string().optional(),
+  user_id: z.string().optional(),
+  updated_since: z.string().optional(),
+});
+
+export type ListTimeslipsInput = z.infer<typeof listTimeslipsSchema>;
+
+export async function listTimeslips(client: FreeAgentClient, input: ListTimeslipsInput) {
+  try {
+    const validated = listTimeslipsSchema.parse(input);
+    const params: Record<string, string> = {};
+    if (validated.from_date) params['from_date'] = validated.from_date;
+    if (validated.to_date) params['to_date'] = validated.to_date;
+    if (validated.view) params['view'] = validated.view;
+    if (validated.project_id) params['project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
+    if (validated.task_id) params['task'] = `${FREEAGENT_API_BASE}/tasks/${validated.task_id}`;
+    if (validated.user_id) params['user'] = `${FREEAGENT_API_BASE}/users/${validated.user_id}`;
+    if (validated.updated_since) params['updated_since'] = validated.updated_since;
+    const timeslips = await client.fetchAllPages<FreeAgentTimeslip>('/timeslips', 'timeslips', params);
+    return timeslips.map((t) => transformTimeslip(t));
+  } catch (error) {
+    handleToolError(error, 'list_timeslips');
+  }
+}
+
+// ========== GET TIMESLIP ==========
+
+export const getTimeslipSchema = z.object({
+  timeslip_id: z.string().min(1),
+});
+
+export type GetTimeslipInput = z.infer<typeof getTimeslipSchema>;
+
+export async function getTimeslip(client: FreeAgentClient, input: GetTimeslipInput) {
+  try {
+    const validated = getTimeslipSchema.parse(input);
+    const response = await client.get<{ timeslip: FreeAgentTimeslip }>(`/timeslips/${validated.timeslip_id}`);
+    return transformTimeslip(response.timeslip);
+  } catch (error) {
+    handleToolError(error, 'get_timeslip');
+  }
+}
+
+// ========== UPDATE TIMESLIP ==========
+
+export const updateTimeslipSchema = z.object({
+  timeslip_id: z.string().min(1),
+  hours: z.number().positive().optional(),
+  comment: z.string().optional(),
+  dated_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export type UpdateTimeslipInput = z.infer<typeof updateTimeslipSchema>;
+
+export async function updateTimeslip(client: FreeAgentClient, input: UpdateTimeslipInput) {
+  try {
+    const validated = updateTimeslipSchema.parse(input);
+    const { timeslip_id, ...fields } = validated;
+
+    const timeslipData: Record<string, unknown> = {};
+    if (fields.hours !== undefined) timeslipData['hours'] = fields.hours.toString();
+    if (fields.comment !== undefined) timeslipData['comment'] = sanitizeInput(fields.comment);
+    if (fields.dated_on !== undefined) timeslipData['dated_on'] = fields.dated_on;
+
+    const response = await client.put<{ timeslip: FreeAgentTimeslip }>(
+      `/timeslips/${timeslip_id}`,
+      { timeslip: timeslipData }
+    );
+
+    return transformTimeslip(response.timeslip);
+  } catch (error) {
+    handleToolError(error, 'update_timeslip');
+  }
+}
+
+// ========== DELETE TIMESLIP ==========
+
+export const deleteTimeslipSchema = z.object({
+  timeslip_id: z.string().min(1),
+});
+
+export type DeleteTimeslipInput = z.infer<typeof deleteTimeslipSchema>;
+
+export async function deleteTimeslip(client: FreeAgentClient, input: DeleteTimeslipInput) {
+  try {
+    const validated = deleteTimeslipSchema.parse(input);
+    await client.delete(`/timeslips/${validated.timeslip_id}`);
+    return { success: true, message: 'Timeslip deleted' };
+  } catch (error) {
+    handleToolError(error, 'delete_timeslip');
+  }
+}

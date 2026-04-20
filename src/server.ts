@@ -491,14 +491,69 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         inputSchema: zodToJsonSchema(tools.updateProjectSchema),
       },
       {
+        name: 'list_projects',
+        description: 'List projects with optional filters (view, contact)',
+        inputSchema: zodToJsonSchema(tools.listProjectsSchema),
+      },
+      {
+        name: 'get_project',
+        description: 'Get a single project by ID',
+        inputSchema: zodToJsonSchema(tools.getProjectSchema),
+      },
+      {
+        name: 'delete_project',
+        description: 'Delete a project',
+        inputSchema: zodToJsonSchema(tools.deleteProjectSchema),
+      },
+      {
         name: 'create_task',
         description: 'Create a task within a project',
         inputSchema: zodToJsonSchema(tools.createTaskSchema),
       },
       {
+        name: 'list_tasks',
+        description: 'List tasks with optional project and view filters',
+        inputSchema: zodToJsonSchema(tools.listTasksSchema),
+      },
+      {
+        name: 'get_task',
+        description: 'Get a single task by ID',
+        inputSchema: zodToJsonSchema(tools.getTaskSchema),
+      },
+      {
+        name: 'update_task',
+        description: 'Update a task',
+        inputSchema: zodToJsonSchema(tools.updateTaskSchema),
+      },
+      {
+        name: 'delete_task',
+        description: 'Delete a task',
+        inputSchema: zodToJsonSchema(tools.deleteTaskSchema),
+      },
+      {
         name: 'create_timeslip',
         description: 'Log time against a project task',
         inputSchema: zodToJsonSchema(tools.createTimeslipSchema),
+      },
+      {
+        name: 'list_timeslips',
+        description: 'List timeslips with optional date, project, task, and user filters',
+        inputSchema: zodToJsonSchema(tools.listTimeslipsSchema),
+      },
+      {
+        name: 'get_timeslip',
+        description: 'Get a single timeslip by ID',
+        inputSchema: zodToJsonSchema(tools.getTimeslipSchema),
+      },
+      {
+        name: 'update_timeslip',
+        description: 'Update a timeslip',
+        inputSchema: zodToJsonSchema(tools.updateTimeslipSchema),
+      },
+      {
+        name: 'delete_timeslip',
+        description: 'Delete a timeslip',
+        inputSchema: zodToJsonSchema(tools.deleteTimeslipSchema),
       },
       // Query tools
       {
@@ -690,11 +745,44 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
             await getContactNameLookup()
           );
           break;
+        case 'list_projects':
+          result = await tools.listProjects(client, args as tools.ListProjectsInput);
+          break;
+        case 'get_project':
+          result = await tools.getProject(client, args as tools.GetProjectInput);
+          break;
+        case 'delete_project':
+          result = await tools.deleteProject(client, args as tools.DeleteProjectInput);
+          break;
         case 'create_task':
           result = await tools.createTask(client, args as tools.CreateTaskInput);
           break;
+        case 'list_tasks':
+          result = await tools.listTasks(client, args as tools.ListTasksInput);
+          break;
+        case 'get_task':
+          result = await tools.getTask(client, args as tools.GetTaskInput);
+          break;
+        case 'update_task':
+          result = await tools.updateTask(client, args as tools.UpdateTaskInput);
+          break;
+        case 'delete_task':
+          result = await tools.deleteTask(client, args as tools.DeleteTaskInput);
+          break;
         case 'create_timeslip':
           result = await tools.createTimeslip(client, args as tools.CreateTimeslipInput);
+          break;
+        case 'list_timeslips':
+          result = await tools.listTimeslips(client, args as tools.ListTimeslipsInput);
+          break;
+        case 'get_timeslip':
+          result = await tools.getTimeslip(client, args as tools.GetTimeslipInput);
+          break;
+        case 'update_timeslip':
+          result = await tools.updateTimeslip(client, args as tools.UpdateTimeslipInput);
+          break;
+        case 'delete_timeslip':
+          result = await tools.deleteTimeslip(client, args as tools.DeleteTimeslipInput);
           break;
 
         // Query tools
