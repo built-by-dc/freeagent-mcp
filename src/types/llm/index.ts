@@ -93,6 +93,8 @@ export interface LLMBankTransactionExplanation {
   matchedInvoiceId?: string;
   matchedBillId?: string;
   value: number;
+  hasAttachment: boolean;
+  markedForReview: boolean;
 }
 
 export interface LLMBankTransaction {

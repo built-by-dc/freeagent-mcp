@@ -37,6 +37,8 @@ export function transformBankTransactionExplanation(
     matchedInvoiceId: explanation.paid_invoice ? extractId(explanation.paid_invoice) : undefined,
     matchedBillId: explanation.paid_bill ? extractId(explanation.paid_bill) : undefined,
     value: parseNumericString(explanation.gross_value),
+    hasAttachment: !!explanation.attachment,
+    markedForReview: explanation.marked_for_review ?? false,
   };
 }
 
