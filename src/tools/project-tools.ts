@@ -12,6 +12,7 @@ export const createProjectSchema = z.object({
   contact_id: z.string().min(1),
   name: z.string().min(1),
   budget_units: z.enum(['Hours', 'Days', 'Monetary']),
+  status: z.enum(['Active', 'Completed', 'Cancelled', 'Hidden']).default('Active'),
   budget: z.number().optional(),
   currency: z.string().length(3).default('GBP'),
   normal_billing_rate: z.number().optional(),
@@ -35,6 +36,7 @@ export async function createProject(
       contact: normalizeContactId(validated.contact_id, FREEAGENT_API_BASE),
       name: sanitizeInput(validated.name),
       budget_units: validated.budget_units,
+      status: validated.status,
       currency: validated.currency.toUpperCase(),
       is_ir35: validated.is_ir35,
     };
