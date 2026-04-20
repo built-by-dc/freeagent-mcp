@@ -141,3 +141,47 @@ export async function deleteBill(
     handleToolError(error, 'delete_bill');
   }
 }
+
+// ========== LIST BILLS ==========
+
+export const listBillsSchema = z.object({
+  contact_id: z.string().optional(),
+  updated_since: z.string().optional(),
+  from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export type ListBillsInput = z.infer<typeof listBillsSchema>;
+
+export async function listBills(client: FreeAgentClient, input: ListBillsInput) {
+  try {
+    const validated = listBillsSchema.parse(input);
+    const params: Record<string, string> = {};
+    if (validated.contact_id) params['contact'] = normalizeContactId(validated.contact_id, FREEAGENT_API_BASE);
+    if (validated.updated_since) params['updated_since'] = validated.updated_since;
+    if (validated.from_date) params['from_date'] = validated.from_date;
+    if (validated.to_date) params['to_date'] = validated.to_date;
+    const bills = await client.fetchAllPages<FreeAgentBill>('/bills', 'bills', params);
+    return bills.map((bill) => transformBill(bill));
+  } catch (error) {
+    handleToolError(error, 'list_bills');
+  }
+}
+
+// ========== GET BILL ==========
+
+export const getBillSchema = z.object({
+  bill_id: z.string().min(1),
+});
+
+export type GetBillInput = z.infer<typeof getBillSchema>;
+
+export async function getBill(client: FreeAgentClient, input: GetBillInput) {
+  try {
+    const validated = getBillSchema.parse(input);
+    const response = await client.get<{ bill: FreeAgentBill }>(`/bills/${validated.bill_id}`);
+    return transformBill(response.bill);
+  } catch (error) {
+    handleToolError(error, 'get_bill');
+  }
+}

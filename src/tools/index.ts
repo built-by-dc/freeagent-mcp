@@ -75,14 +75,20 @@ export {
   createBill,
   updateBill,
   deleteBill,
+  listBills,
+  getBill,
   createBillSchema,
   updateBillSchema,
   deleteBillSchema,
+  listBillsSchema,
+  getBillSchema,
 } from './bill-tools.js';
 export type {
   CreateBillInput,
   UpdateBillInput,
   DeleteBillInput,
+  ListBillsInput,
+  GetBillInput,
 } from './bill-tools.js';
 
 // Project tools

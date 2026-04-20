@@ -469,6 +469,16 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         description: 'Delete a bill',
         inputSchema: zodToJsonSchema(tools.deleteBillSchema),
       },
+      {
+        name: 'list_bills',
+        description: 'List bills with optional contact and date filters',
+        inputSchema: zodToJsonSchema(tools.listBillsSchema),
+      },
+      {
+        name: 'get_bill',
+        description: 'Get a single bill by ID',
+        inputSchema: zodToJsonSchema(tools.getBillSchema),
+      },
       // Project tools
       {
         name: 'create_project',
@@ -657,6 +667,12 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
           break;
         case 'delete_bill':
           result = await tools.deleteBill(client, args as tools.DeleteBillInput);
+          break;
+        case 'list_bills':
+          result = await tools.listBills(client, args as tools.ListBillsInput);
+          break;
+        case 'get_bill':
+          result = await tools.getBill(client, args as tools.GetBillInput);
           break;
 
         // Project tools
