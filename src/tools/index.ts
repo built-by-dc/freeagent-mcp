@@ -27,9 +27,13 @@ export {
   createContact,
   updateContact,
   deleteContact,
+  listContacts,
+  getContact,
   createContactSchema,
   updateContactSchema,
   deleteContactSchema,
+  listContactsSchema,
+  getContactSchema,
 } from './contact-tools.js';
 export type {
   CreateContactInput,

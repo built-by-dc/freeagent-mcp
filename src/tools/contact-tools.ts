@@ -146,3 +146,41 @@ export async function deleteContact(
     handleToolError(error, 'delete_contact');
   }
 }
+
+// ========== LIST CONTACTS ==========
+
+export const listContactsSchema = z.object({
+  view: z.enum(['all', 'active', 'clients', 'suppliers', 'hidden']).optional(),
+  sort: z.string().optional(),
+  updated_since: z.string().optional(),
+});
+
+export async function listContacts(client: FreeAgentClient, input: unknown) {
+  try {
+    const validated = listContactsSchema.parse(input);
+    const params: Record<string, string> = {};
+    if (validated.view) params['view'] = validated.view;
+    if (validated.sort) params['sort'] = validated.sort;
+    if (validated.updated_since) params['updated_since'] = validated.updated_since;
+    const contacts = await client.fetchAllPages<FreeAgentContact>('/contacts', 'contacts', params);
+    return contacts.map(transformContact);
+  } catch (error) {
+    handleToolError(error, 'list_contacts');
+  }
+}
+
+// ========== GET CONTACT ==========
+
+export const getContactSchema = z.object({
+  contact_id: z.string().min(1),
+});
+
+export async function getContact(client: FreeAgentClient, input: unknown) {
+  try {
+    const validated = getContactSchema.parse(input);
+    const response = await client.get<{ contact: FreeAgentContact }>(`/contacts/${validated.contact_id}`);
+    return transformContact(response.contact);
+  } catch (error) {
+    handleToolError(error, 'get_contact');
+  }
+}

@@ -407,6 +407,16 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         description: 'Delete a contact',
         inputSchema: zodToJsonSchema(tools.deleteContactSchema),
       },
+      {
+        name: 'list_contacts',
+        description: 'List contacts with optional filters',
+        inputSchema: zodToJsonSchema(tools.listContactsSchema),
+      },
+      {
+        name: 'get_contact',
+        description: 'Get a single contact by ID',
+        inputSchema: zodToJsonSchema(tools.getContactSchema),
+      },
       // Bank tools
       {
         name: 'explain_transaction',
@@ -570,6 +580,12 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
           break;
         case 'delete_contact':
           result = await tools.deleteContact(client, args as tools.DeleteContactInput);
+          break;
+        case 'list_contacts':
+          result = await tools.listContacts(getClient(), args);
+          break;
+        case 'get_contact':
+          result = await tools.getContact(getClient(), args);
           break;
 
         // Bank tools
