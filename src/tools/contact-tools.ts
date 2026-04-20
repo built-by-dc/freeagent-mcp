@@ -155,7 +155,9 @@ export const listContactsSchema = z.object({
   updated_since: z.string().optional(),
 });
 
-export async function listContacts(client: FreeAgentClient, input: unknown) {
+export type ListContactsInput = z.infer<typeof listContactsSchema>;
+
+export async function listContacts(client: FreeAgentClient, input: ListContactsInput) {
   try {
     const validated = listContactsSchema.parse(input);
     const params: Record<string, string> = {};
@@ -175,7 +177,9 @@ export const getContactSchema = z.object({
   contact_id: z.string().min(1),
 });
 
-export async function getContact(client: FreeAgentClient, input: unknown) {
+export type GetContactInput = z.infer<typeof getContactSchema>;
+
+export async function getContact(client: FreeAgentClient, input: GetContactInput) {
   try {
     const validated = getContactSchema.parse(input);
     const response = await client.get<{ contact: FreeAgentContact }>(`/contacts/${validated.contact_id}`);

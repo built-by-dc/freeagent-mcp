@@ -582,10 +582,10 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
           result = await tools.deleteContact(client, args as tools.DeleteContactInput);
           break;
         case 'list_contacts':
-          result = await tools.listContacts(getClient(), args);
+          result = await tools.listContacts(getClient(), args as tools.ListContactsInput);
           break;
         case 'get_contact':
-          result = await tools.getContact(getClient(), args);
+          result = await tools.getContact(getClient(), args as tools.GetContactInput);
           break;
 
         // Bank tools

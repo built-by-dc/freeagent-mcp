@@ -39,6 +39,8 @@ export type {
   CreateContactInput,
   UpdateContactInput,
   DeleteContactInput,
+  ListContactsInput,
+  GetContactInput,
 } from './contact-tools.js';
 
 // Bank tools
