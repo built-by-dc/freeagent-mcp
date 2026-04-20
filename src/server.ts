@@ -18,6 +18,7 @@ import {
   generateAuthorizationUrl,
   exchangeCodeForTokens,
   type TokenManager,
+  type TokenStore,
 } from './auth/index.js';
 import { createFreeAgentClient, type FreeAgentClient } from './api/index.js';
 import { toMcpError } from './utils/error-handler.js';
@@ -33,6 +34,7 @@ import * as prompts from './prompts/index.js';
 
 export interface FreeAgentMcpServer {
   server: Server;
+  tokenStore: TokenStore;
   getAuthorizationUrl: (state?: string) => string;
   handleAuthorizationCode: (code: string) => Promise<void>;
   isAuthenticated: () => boolean;
@@ -789,6 +791,7 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
 
   return {
     server,
+    tokenStore,
     getAuthorizationUrl: (state?: string) => generateAuthorizationUrl(state),
     handleAuthorizationCode: async (code: string) => {
       const tokens = await exchangeCodeForTokens(code);

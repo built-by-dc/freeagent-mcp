@@ -85,7 +85,7 @@ export async function getBankSummary(
     const validated = getBankSummarySchema.parse(input);
 
     const accounts = await getBankAccounts(client, { view: validated.view });
-    const activeAccounts = accounts.filter((acc) => acc.status === 'Active');
+    const activeAccounts = accounts.filter((acc) => acc.status?.toLowerCase() === 'active');
 
     // Group by currency
     const gbpAccounts = activeAccounts.filter((acc) => acc.currency === 'GBP');
