@@ -34,22 +34,30 @@ describe('listBankTransactions', () => {
   beforeEach(() => { mockClient = { fetchAllPages: vi.fn() }; });
 
   it('fetches transactions for an account', async () => {
-    mockClient.fetchAllPages.mockResolvedValue([mockTransaction]);
+    // First call: bank accounts lookup; second call: transactions
+    mockClient.fetchAllPages.mockResolvedValueOnce([]).mockResolvedValueOnce([mockTransaction]);
     const result = await listBankTransactions(mockClient, { bank_account_id: '10' });
     expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/bank_transactions', 'bank_transactions', expect.objectContaining({ bank_account: expect.stringContaining('10') }));
     expect(result[0].id).toBe('1');
   });
 
   it('passes view=marked_for_review filter', async () => {
-    mockClient.fetchAllPages.mockResolvedValue([]);
+    mockClient.fetchAllPages.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     await listBankTransactions(mockClient, { bank_account_id: '10', view: 'marked_for_review' });
     expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/bank_transactions', 'bank_transactions', expect.objectContaining({ view: 'marked_for_review' }));
   });
 
   it('passes date range filters', async () => {
-    mockClient.fetchAllPages.mockResolvedValue([]);
+    mockClient.fetchAllPages.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     await listBankTransactions(mockClient, { bank_account_id: '10', from_date: '2026-04-01', to_date: '2026-04-30' });
     expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/bank_transactions', 'bank_transactions', expect.objectContaining({ from_date: '2026-04-01', to_date: '2026-04-30' }));
+  });
+
+  it('does not include view param when not set', async () => {
+    mockClient.fetchAllPages.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    await listBankTransactions(mockClient, { bank_account_id: '10' });
+    const callArgs = mockClient.fetchAllPages.mock.calls[1][2];
+    expect(callArgs).not.toHaveProperty('view');
   });
 
   it('propagates errors', async () => {

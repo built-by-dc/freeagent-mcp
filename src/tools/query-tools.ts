@@ -211,10 +211,10 @@ export async function getUnexplainedTransactions(
 // ========== LIST BANK TRANSACTIONS ==========
 
 export const listBankTransactionsSchema = z.object({
-  bank_account_id: z.string().min(1),
-  view: z.enum(['all', 'unexplained', 'explained', 'marked_for_review', 'manual', 'imported']).optional(),
-  from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  bank_account_id: z.string().min(1).describe('Bank account ID'),
+  view: z.enum(['all', 'unexplained', 'explained', 'marked_for_review', 'manual', 'imported']).optional().describe('Filter transactions by type'),
+  from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date (YYYY-MM-DD)'),
+  to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date (YYYY-MM-DD)'),
 });
 
 export type ListBankTransactionsInput = z.infer<typeof listBankTransactionsSchema>;
@@ -222,6 +222,9 @@ export type ListBankTransactionsInput = z.infer<typeof listBankTransactionsSchem
 export async function listBankTransactions(client: FreeAgentClient, input: ListBankTransactionsInput) {
   try {
     const validated = listBankTransactionsSchema.parse(input);
+
+    const bankAccountNameLookup = await buildBankAccountNameLookup(client);
+
     const params: Record<string, string> = {
       bank_account: normalizeBankAccountId(validated.bank_account_id, FREEAGENT_API_BASE),
     };
@@ -229,7 +232,7 @@ export async function listBankTransactions(client: FreeAgentClient, input: ListB
     if (validated.from_date) params['from_date'] = validated.from_date;
     if (validated.to_date) params['to_date'] = validated.to_date;
     const transactions = await client.fetchAllPages<FreeAgentBankTransaction>('/bank_transactions', 'bank_transactions', params);
-    return transactions.map((t) => transformBankTransaction(t));
+    return transactions.map((t) => transformBankTransaction(t, bankAccountNameLookup));
   } catch (error) {
     handleToolError(error, 'list_bank_transactions');
   }
