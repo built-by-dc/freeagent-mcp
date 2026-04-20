@@ -48,6 +48,18 @@ describe('listBills', () => {
     expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/bills', 'bills', { updated_since: '2026-01-01T00:00:00Z' });
   });
 
+  it('passes from_date filter', async () => {
+    mockClient.fetchAllPages.mockResolvedValue([]);
+    await listBills(mockClient, { from_date: '2026-01-01' });
+    expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/bills', 'bills', { from_date: '2026-01-01' });
+  });
+
+  it('passes to_date filter', async () => {
+    mockClient.fetchAllPages.mockResolvedValue([]);
+    await listBills(mockClient, { to_date: '2026-01-31' });
+    expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/bills', 'bills', { to_date: '2026-01-31' });
+  });
+
   it('propagates errors', async () => {
     mockClient.fetchAllPages.mockRejectedValue(new Error('API error'));
     await expect(listBills(mockClient, {})).rejects.toThrow();
