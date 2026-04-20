@@ -223,3 +223,49 @@ export async function deleteInvoice(
     handleToolError(error, 'delete_invoice');
   }
 }
+
+// ========== LIST INVOICES ==========
+
+export const listInvoicesSchema = z.object({
+  view: z.enum(['all', 'open', 'overdue', 'open_or_overdue', 'recent_open_or_overdue', 'paid', 'draft', 'scheduled_to_email', 'thank_you_emails', 'reminder_emails']).optional(),
+  contact_id: z.string().optional(),
+  project_id: z.string().optional(),
+  updated_since: z.string().optional(),
+  sort: z.string().optional(),
+});
+
+export type ListInvoicesInput = z.infer<typeof listInvoicesSchema>;
+
+export async function listInvoices(client: FreeAgentClient, input: ListInvoicesInput) {
+  try {
+    const validated = listInvoicesSchema.parse(input);
+    const params: Record<string, string> = {};
+    if (validated.view) params['view'] = validated.view;
+    if (validated.contact_id) params['contact'] = `${FREEAGENT_API_BASE}/contacts/${validated.contact_id}`;
+    if (validated.project_id) params['project'] = `${FREEAGENT_API_BASE}/projects/${validated.project_id}`;
+    if (validated.updated_since) params['updated_since'] = validated.updated_since;
+    if (validated.sort) params['sort'] = validated.sort;
+    const invoices = await client.fetchAllPages<FreeAgentInvoice>('/invoices', 'invoices', params);
+    return invoices.map((inv) => transformInvoice(inv));
+  } catch (error) {
+    handleToolError(error, 'list_invoices');
+  }
+}
+
+// ========== GET INVOICE ==========
+
+export const getInvoiceSchema = z.object({
+  invoice_id: z.string().min(1),
+});
+
+export type GetInvoiceInput = z.infer<typeof getInvoiceSchema>;
+
+export async function getInvoice(client: FreeAgentClient, input: GetInvoiceInput) {
+  try {
+    const validated = getInvoiceSchema.parse(input);
+    const response = await client.get<{ invoice: FreeAgentInvoice }>(`/invoices/${validated.invoice_id}`);
+    return transformInvoice(response.invoice);
+  } catch (error) {
+    handleToolError(error, 'get_invoice');
+  }
+}

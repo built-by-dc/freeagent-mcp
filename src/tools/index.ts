@@ -6,12 +6,16 @@ export {
   markInvoiceSent,
   markInvoicePaid,
   deleteInvoice,
+  listInvoices,
+  getInvoice,
   createInvoiceSchema,
   updateInvoiceSchema,
   sendInvoiceSchema,
   markInvoiceSentSchema,
   markInvoicePaidSchema,
   deleteInvoiceSchema,
+  listInvoicesSchema,
+  getInvoiceSchema,
 } from './invoice-tools.js';
 export type {
   CreateInvoiceInput,
@@ -20,6 +24,8 @@ export type {
   MarkInvoiceSentInput,
   MarkInvoicePaidInput,
   DeleteInvoiceInput,
+  ListInvoicesInput,
+  GetInvoiceInput,
 } from './invoice-tools.js';
 
 // Contact tools

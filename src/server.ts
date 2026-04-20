@@ -391,6 +391,16 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         description: 'Delete a draft invoice',
         inputSchema: zodToJsonSchema(tools.deleteInvoiceSchema),
       },
+      {
+        name: 'list_invoices',
+        description: 'List invoices with optional filters (view, contact, project, date)',
+        inputSchema: zodToJsonSchema(tools.listInvoicesSchema),
+      },
+      {
+        name: 'get_invoice',
+        description: 'Get a single invoice by ID',
+        inputSchema: zodToJsonSchema(tools.getInvoiceSchema),
+      },
       // Contact tools
       {
         name: 'create_contact',
@@ -569,6 +579,12 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
           break;
         case 'delete_invoice':
           result = await tools.deleteInvoice(client, args as tools.DeleteInvoiceInput);
+          break;
+        case 'list_invoices':
+          result = await tools.listInvoices(client, args as tools.ListInvoicesInput);
+          break;
+        case 'get_invoice':
+          result = await tools.getInvoice(client, args as tools.GetInvoiceInput);
           break;
 
         // Contact tools
