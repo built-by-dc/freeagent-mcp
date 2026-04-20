@@ -206,6 +206,12 @@ describe('listTimeslips', () => {
     expect(result[0].id).toBe('1');
   });
 
+  it('passes project_id and view filters', async () => {
+    mockClient.fetchAllPages.mockResolvedValue([]);
+    await listTimeslips(mockClient, { project_id: '5', view: 'unbilled' });
+    expect(mockClient.fetchAllPages).toHaveBeenCalledWith('/timeslips', 'timeslips', expect.objectContaining({ view: 'unbilled', project: expect.stringContaining('5') }));
+  });
+
   it('propagates errors', async () => {
     mockClient.fetchAllPages.mockRejectedValue(new Error('API error'));
     await expect(listTimeslips(mockClient, {})).rejects.toThrow();
