@@ -1,4 +1,5 @@
 import { createServer, type Server } from 'http';
+import { URL } from 'url';
 
 export interface PendingAuth {
   state: 'awaiting_callback' | 'exchanging' | 'idle';
@@ -10,22 +11,28 @@ export interface PendingAuth {
 
 export type ExchangeAndPersist = (code: string) => Promise<void>;
 
+export type WaitForCodeResult =
+  | { status: 'received'; code: string }
+  | { status: 'pending' }
+  | { status: 'timeout' }
+  | { status: 'user_denied'; detail?: string };
+
 export interface CallbackServer {
   start(opts: { csrfState: string; absoluteDeadlineMs: number }): Promise<{ url: string }>;
-  waitForCode(maxWaitMs: number): Promise<
-    | { status: 'received'; code: string }
-    | { status: 'pending' }
-    | { status: 'timeout' }
-    | { status: 'user_denied'; detail?: string }
-  >;
+  waitForCode(maxWaitMs: number): Promise<WaitForCodeResult>;
   stop(): Promise<void>;
   getPending(): PendingAuth;
+  /** @internal — exposed for tests using ephemeral ports. */
+  getActualPort(): number;
 }
 
 interface CallbackServerOptions {
-  port?: number; // defaults to 3000; tests use 0 for ephemeral
-  host?: string; // defaults to 127.0.0.1
+  port?: number;
+  host?: string;
 }
+
+const SUCCESS_PAGE = `<!doctype html><html><body style="font-family:sans-serif;text-align:center;padding:3em;"><h1>Authenticated</h1><p>You can close this tab.</p></body></html>`;
+const DENIED_PAGE = `<!doctype html><html><body style="font-family:sans-serif;text-align:center;padding:3em;"><h1>Access denied</h1><p>You can close this tab.</p></body></html>`;
 
 export function createCallbackServer(
   authUrlBuilder: (state: string) => string,
@@ -44,9 +51,28 @@ export function createCallbackServer(
   };
 
   let httpServer: Server | null = null;
+  let actualPort = 0;
   let deadlineTimer: NodeJS.Timeout | null = null;
+  let csrfFailed = false;
 
-  const server: CallbackServer = {
+  let waiters: Array<(r: WaitForCodeResult) => void> = [];
+
+  function resolveWaiters(result: WaitForCodeResult): void {
+    const queued = waiters;
+    waiters = [];
+    for (const w of queued) w(result);
+  }
+
+  async function handleReceivedCode(code: string): Promise<void> {
+    pending = { ...pending, state: 'exchanging' };
+    try {
+      await exchangeAndPersist(code);
+    } finally {
+      await self.stop();
+    }
+  }
+
+  const self: CallbackServer = {
     async start({ csrfState, absoluteDeadlineMs }) {
       if (pending.state !== 'idle' && pending.url) {
         return { url: pending.url };
@@ -54,15 +80,73 @@ export function createCallbackServer(
 
       const url = authUrlBuilder(csrfState);
 
-      httpServer = createServer((_req, res) => {
-        // Real handler wired in Task 3.
-        res.statusCode = 404;
-        res.end();
+      httpServer = createServer(async (req, res) => {
+        if (!req.url) {
+          res.statusCode = 400;
+          res.end();
+          return;
+        }
+
+        const parsed = new URL(req.url, `http://${host}`);
+        if (parsed.pathname !== '/callback') {
+          res.statusCode = 404;
+          res.end();
+          return;
+        }
+
+        const state = parsed.searchParams.get('state');
+        const code = parsed.searchParams.get('code');
+        const errorParam = parsed.searchParams.get('error');
+
+        if (state !== pending.csrfState) {
+          res.statusCode = 400;
+          res.setHeader('content-type', 'text/plain; charset=utf-8');
+          res.end('Invalid state');
+          // Mark CSRF failure so any pending waiters will resolve as 'timeout'
+          // when their window elapses (avoids async timing races with stop()).
+          csrfFailed = true;
+          return;
+        }
+
+        if (errorParam) {
+          res.statusCode = 200;
+          res.setHeader('content-type', 'text/html; charset=utf-8');
+          res.end(DENIED_PAGE);
+          const detail = parsed.searchParams.get('error_description') ?? undefined;
+          if (waiters.length > 0) {
+            resolveWaiters({ status: 'user_denied', detail });
+          }
+          await self.stop();
+          return;
+        }
+
+        if (!code) {
+          res.statusCode = 400;
+          res.setHeader('content-type', 'text/plain; charset=utf-8');
+          res.end('Missing code');
+          return;
+        }
+
+        res.statusCode = 200;
+        res.setHeader('content-type', 'text/html; charset=utf-8');
+        res.end(SUCCESS_PAGE);
+
+        if (waiters.length > 0) {
+          resolveWaiters({ status: 'received', code });
+        } else {
+          // No live waiter — server completes exchange itself so deferred callers
+          // see authenticated state on next auth_status call.
+          void handleReceivedCode(code);
+        }
       });
 
       await new Promise<void>((resolve, reject) => {
         httpServer!.once('error', reject);
-        httpServer!.listen(port, host, () => resolve());
+        httpServer!.listen(port, host, () => {
+          const addr = httpServer!.address();
+          actualPort = typeof addr === 'object' && addr ? addr.port : port;
+          resolve();
+        });
       });
 
       pending = {
@@ -73,22 +157,45 @@ export function createCallbackServer(
         expiresAt: absoluteDeadlineMs,
       };
 
+      const remaining = Math.max(0, absoluteDeadlineMs - Date.now());
       deadlineTimer = setTimeout(() => {
-        void server.stop();
-      }, Math.max(0, absoluteDeadlineMs - Date.now()));
+        if (waiters.length > 0) resolveWaiters({ status: 'timeout' });
+        void self.stop();
+      }, remaining);
 
       return { url };
     },
 
-    async waitForCode(_maxWaitMs) {
-      // Wired in Task 3.
-      return { status: 'timeout' };
+    waitForCode(maxWaitMs) {
+      if (pending.state === 'idle') {
+        return Promise.resolve({ status: 'timeout' });
+      }
+      return new Promise<WaitForCodeResult>((resolve) => {
+        const timer = setTimeout(() => {
+          waiters = waiters.filter((w) => w !== resolver);
+          // If the server is still alive and deadline hasn't passed, caller can retry.
+          // Otherwise treat as a hard timeout.
+          const now = Date.now();
+          const deadlinePassed = pending.expiresAt !== null && now >= pending.expiresAt;
+          const serverGone = pending.state === 'idle';
+          resolve(deadlinePassed || serverGone || csrfFailed ? { status: 'timeout' } : { status: 'pending' });
+        }, maxWaitMs);
+
+        const resolver = (r: WaitForCodeResult) => {
+          clearTimeout(timer);
+          resolve(r);
+        };
+        waiters.push(resolver);
+      });
     },
 
     async stop() {
       if (deadlineTimer) {
         clearTimeout(deadlineTimer);
         deadlineTimer = null;
+      }
+      if (waiters.length > 0) {
+        resolveWaiters({ status: 'timeout' });
       }
       if (httpServer) {
         await new Promise<void>((resolve) => {
@@ -103,12 +210,17 @@ export function createCallbackServer(
         startedAt: null,
         expiresAt: null,
       };
+      csrfFailed = false;
     },
 
     getPending() {
       return { ...pending };
     },
+
+    getActualPort() {
+      return actualPort;
+    },
   };
 
-  return server;
+  return self;
 }
