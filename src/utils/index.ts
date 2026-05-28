@@ -1,5 +1,6 @@
 export { toMcpError, handleResourceError, handleToolError, FREEAGENT_ERROR_CODES } from './error-handler.js';
 export { sanitizeForLLM, sanitizeInput, sanitizeObject } from './sanitizer.js';
+export { openBrowser } from './open-browser.js';
 export {
   idSchema,
   dateSchema,
