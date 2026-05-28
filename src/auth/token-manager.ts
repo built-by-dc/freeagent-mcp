@@ -4,11 +4,17 @@ import type { TokenStore } from './token-store.js';
 const TOKEN_REFRESH_BUFFER_MS = 60 * 1000; // 60 seconds before expiry
 const MAX_REFRESH_PER_MINUTE = 15;
 
+export interface TokenExpirySnapshot {
+  expiresAt: number;
+  refreshTokenExpiresAt: number;
+}
+
 export interface TokenManager {
   getAccessToken(): Promise<string>;
   setTokens(tokens: TokenData): Promise<void>;
   isAuthenticated(): boolean;
   clearTokens(): Promise<void>;
+  getTokenSnapshot(): TokenExpirySnapshot | null;
 }
 
 export function createTokenManager(store: TokenStore): TokenManager {
@@ -88,6 +94,15 @@ export function createTokenManager(store: TokenStore): TokenManager {
     async clearTokens(): Promise<void> {
       store.clear();
       await store.persist();
+    },
+
+    getTokenSnapshot(): TokenExpirySnapshot | null {
+      const tokens = store.get();
+      if (!tokens) return null;
+      return {
+        expiresAt: tokens.expiresAt,
+        refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
+      };
     },
   };
 
