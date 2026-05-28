@@ -202,3 +202,16 @@ export type {
   GetAttachmentInput,
   DeleteAttachmentInput,
 } from './attachment-tools.js';
+
+// Auth tools
+export {
+  authStatus,
+  authenticate,
+  authStatusSchema,
+  authenticateSchema,
+} from './auth-tools.js';
+export type {
+  AuthStatusInput,
+  AuthenticateInput,
+  AuthContext,
+} from './auth-tools.js';
