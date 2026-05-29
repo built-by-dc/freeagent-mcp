@@ -16,12 +16,14 @@ function pendingToOutput(pending: PendingAuth): {
   url: string | null;
   started_at: string | null;
   expires_at: string | null;
+  last_error: string | null;
 } {
   return {
     state: pending.state,
     url: pending.url,
     started_at: pending.startedAt !== null ? new Date(pending.startedAt).toISOString() : null,
     expires_at: pending.expiresAt !== null ? new Date(pending.expiresAt).toISOString() : null,
+    last_error: pending.lastError,
   };
 }
 

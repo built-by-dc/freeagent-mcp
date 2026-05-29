@@ -7,6 +7,7 @@ export interface PendingAuth {
   csrfState: string | null;
   startedAt: number | null;
   expiresAt: number | null;
+  lastError: string | null;
 }
 
 export type ExchangeAndPersist = (code: string) => Promise<void>;
@@ -48,6 +49,7 @@ export function createCallbackServer(
     csrfState: null,
     startedAt: null,
     expiresAt: null,
+    lastError: null,
   };
 
   let httpServer: Server | null = null;
@@ -65,10 +67,17 @@ export function createCallbackServer(
 
   async function handleReceivedCode(code: string): Promise<void> {
     pending = { ...pending, state: 'exchanging' };
+    let exchangeError: string | null = null;
     try {
       await exchangeAndPersist(code);
+    } catch (err) {
+      exchangeError = (err as Error).message;
+      console.error('[callback-server] deferred token exchange failed:', err);
     } finally {
       await self.stop();
+      if (exchangeError) {
+        pending = { ...pending, lastError: `exchange_failed: ${exchangeError}` };
+      }
     }
   }
 
@@ -140,14 +149,33 @@ export function createCallbackServer(
         }
       });
 
-      await new Promise<void>((resolve, reject) => {
-        httpServer!.once('error', reject);
-        httpServer!.listen(port, host, () => {
-          const addr = httpServer!.address();
-          actualPort = typeof addr === 'object' && addr ? addr.port : port;
-          resolve();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const onError = (err: Error) => {
+            httpServer?.removeListener('listening', onListening);
+            reject(err);
+          };
+          const onListening = () => {
+            httpServer?.removeListener('error', onError);
+            const addr = httpServer!.address();
+            actualPort = typeof addr === 'object' && addr ? addr.port : port;
+            resolve();
+          };
+          httpServer!.once('error', onError);
+          httpServer!.once('listening', onListening);
+          httpServer!.listen(port, host);
         });
-      });
+      } catch (err) {
+        // Bind failed — discard the server instance so the next start() call
+        // creates a fresh one rather than orphaning this reference.
+        try {
+          httpServer?.close();
+        } catch {
+          // ignore — server never bound
+        }
+        httpServer = null;
+        throw err;
+      }
 
       pending = {
         state: 'awaiting_callback',
@@ -155,6 +183,7 @@ export function createCallbackServer(
         csrfState,
         startedAt: Date.now(),
         expiresAt: absoluteDeadlineMs,
+        lastError: null,
       };
 
       const remaining = Math.max(0, absoluteDeadlineMs - Date.now());
@@ -209,6 +238,7 @@ export function createCallbackServer(
         csrfState: null,
         startedAt: null,
         expiresAt: null,
+        lastError: null,
       };
       csrfFailed = false;
     },

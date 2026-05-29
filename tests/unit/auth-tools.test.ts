@@ -73,6 +73,7 @@ function makeCallbackServer(opts: {
     csrfState: null,
     startedAt: null,
     expiresAt: null,
+    lastError: null,
   };
   return {
     start: vi.fn(async () => ({ url: opts.startUrl ?? 'https://oauth.example/x' })),
@@ -120,6 +121,7 @@ describe('auth_status', () => {
         csrfState: 'csrf-xyz',
         startedAt: started,
         expiresAt: started + 120_000,
+        lastError: null,
       },
     });
     const tm = makeTokenManager({ authenticated: false });
@@ -202,6 +204,7 @@ describe('authenticate — behavior', () => {
       csrfState: 'csrf',
       startedAt: Date.now(),
       expiresAt: Date.now() + 120_000,
+      lastError: null,
     });
     const out = await authenticate(
       { tokenManager: tm, callbackServer: cb },

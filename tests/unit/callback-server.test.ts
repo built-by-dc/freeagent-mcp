@@ -164,3 +164,58 @@ describe('CallbackServer — code receive', () => {
     expect(server.getPending().state).toBe('idle');
   });
 });
+
+describe('CallbackServer — bind failure cleanup', () => {
+  it('EADDRINUSE leaves no orphan http.Server reference; retry succeeds', async () => {
+    // Bind a blocker on a real ephemeral port.
+    const { createServer } = await import('http');
+    const blocker = createServer(() => undefined);
+    await new Promise<void>((resolve) => blocker.listen(0, '127.0.0.1', () => resolve()));
+    const busyPort = (blocker.address() as { port: number }).port;
+
+    const server = createCallbackServer(authUrlBuilder, exchangeAndPersist, { port: busyPort });
+    await expect(
+      server.start({ csrfState: 'abc', absoluteDeadlineMs: Date.now() + 60_000 })
+    ).rejects.toMatchObject({ code: 'EADDRINUSE' });
+
+    // State should remain idle (start never advanced it).
+    expect(server.getPending().state).toBe('idle');
+
+    // Now free the port and retry — must succeed (no stale httpServer ref blocking).
+    await new Promise<void>((resolve) => blocker.close(() => resolve()));
+    const result = await server.start({ csrfState: 'abc2', absoluteDeadlineMs: Date.now() + 60_000 });
+    expect(result.url).toContain('abc2');
+
+    await server.stop();
+  });
+});
+
+describe('CallbackServer — deferred exchange failure', () => {
+  it('failed deferred exchange surfaces via getPending().lastError', async () => {
+    const failingExchange = vi.fn(async () => {
+      throw new Error('boom');
+    });
+    const server = createCallbackServer(authUrlBuilder, failingExchange, { port: 0 });
+    await server.start({ csrfState: 'csrf-xyz', absoluteDeadlineMs: Date.now() + 60_000 });
+    const port = (server as unknown as { getActualPort: () => number }).getActualPort();
+
+    // Spy on console.error so failure is observable in CI logs too.
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    // Pending wait first → no live waiter, server takes deferred exchange path.
+    const pendingResult = await server.waitForCode(20);
+    expect(pendingResult.status).toBe('pending');
+
+    await callCallback(port, 'code=BAD&state=csrf-xyz');
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(failingExchange).toHaveBeenCalledWith('BAD');
+    expect(errSpy).toHaveBeenCalled();
+    const pend = server.getPending();
+    expect(pend.state).toBe('idle');
+    expect(pend.lastError).toMatch(/exchange_failed: boom/);
+
+    errSpy.mockRestore();
+    await server.stop();
+  });
+});
