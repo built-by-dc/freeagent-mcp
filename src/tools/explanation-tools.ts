@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { FreeAgentClient } from '../api/freeagent-client.js';
-import type { FreeAgentBankTransactionExplanation, FreeAgentAttachment } from '../types/freeagent/index.js';
+import type { FreeAgentBankTransactionExplanation } from '../types/freeagent/index.js';
 import { handleToolError } from '../utils/error-handler.js';
 import {
   normalizeBankAccountId,
@@ -221,55 +221,6 @@ export async function deleteBankTransactionExplanation(
     return { success: true, message: 'Bank transaction explanation deleted' };
   } catch (error) {
     handleToolError(error, 'delete_bank_transaction_explanation');
-  }
-}
-
-// ========== UPLOAD RECEIPT ==========
-export const uploadReceiptSchema = z.object({
-  explanation_id: z.string().min(1).describe('Bank transaction explanation ID'),
-  file_data: z.string().min(1).describe('Base64-encoded file data'),
-  file_name: z.string().min(1).describe('File name with extension (e.g., receipt.pdf)'),
-  content_type: z.enum(SUPPORTED_CONTENT_TYPES).describe('MIME type: image/png, image/jpeg, image/gif, application/pdf'),
-  description: z.string().optional().describe('Description of the attachment'),
-});
-
-export type UploadReceiptInput = z.infer<typeof uploadReceiptSchema>;
-
-export async function uploadReceipt(
-  client: FreeAgentClient,
-  input: UploadReceiptInput
-) {
-  try {
-    const validated = uploadReceiptSchema.parse(input);
-
-    // Validate file size (max 5MB)
-    const fileSize = Buffer.from(validated.file_data, 'base64').length;
-    if (fileSize > 5 * 1024 * 1024) {
-      throw new Error('File size exceeds 5MB limit');
-    }
-
-    const attachmentData: Record<string, unknown> = {
-      data: validated.file_data,
-      file_name: validated.file_name,
-      content_type: validated.content_type,
-    };
-
-    if (validated.description) {
-      attachmentData['description'] = sanitizeInput(validated.description);
-    }
-
-    const response = await client.put<{ bank_transaction_explanation: FreeAgentBankTransactionExplanation }>(
-      `/bank_transaction_explanations/${validated.explanation_id}`,
-      {
-        bank_transaction_explanation: {
-          attachment: attachmentData,
-        },
-      }
-    );
-
-    return transformExplanation(response.bank_transaction_explanation);
-  } catch (error) {
-    handleToolError(error, 'upload_receipt');
   }
 }
 

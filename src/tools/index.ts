@@ -173,13 +173,11 @@ export {
   getBankTransactionExplanation,
   updateBankTransactionExplanation,
   deleteBankTransactionExplanation,
-  uploadReceipt,
   createBankTransactionExplanation,
   listBankTransactionExplanationsSchema,
   getBankTransactionExplanationSchema,
   updateBankTransactionExplanationSchema,
   deleteBankTransactionExplanationSchema,
-  uploadReceiptSchema,
   createBankTransactionExplanationSchema,
 } from './explanation-tools.js';
 export type {
@@ -187,6 +185,20 @@ export type {
   GetBankTransactionExplanationInput,
   UpdateBankTransactionExplanationInput,
   DeleteBankTransactionExplanationInput,
-  UploadReceiptInput,
   CreateBankTransactionExplanationInput,
 } from './explanation-tools.js';
+
+// Attachment tools
+export {
+  uploadAttachment,
+  getAttachment,
+  deleteAttachment,
+  uploadAttachmentSchema,
+  getAttachmentSchema,
+  deleteAttachmentSchema,
+} from './attachment-tools.js';
+export type {
+  UploadAttachmentInput,
+  GetAttachmentInput,
+  DeleteAttachmentInput,
+} from './attachment-tools.js';

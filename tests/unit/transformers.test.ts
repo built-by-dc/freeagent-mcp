@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { extractId, parseNumericString, computeDaysOverdue, computeFullName } from '../../src/transformers/common.js';
 import { transformContact } from '../../src/transformers/contact-transformer.js';
 import { transformInvoice } from '../../src/transformers/invoice-transformer.js';
-import type { FreeAgentContact, FreeAgentInvoice } from '../../src/types/freeagent/index.js';
+import { transformBankTransactionExplanation } from '../../src/transformers/bank-transformer.js';
+import type { FreeAgentContact, FreeAgentInvoice, FreeAgentBankTransactionExplanation } from '../../src/types/freeagent/index.js';
 
 describe('Common Transformers', () => {
   describe('extractId', () => {
@@ -165,6 +166,55 @@ describe('Invoice Transformer', () => {
       ],
       comments: undefined,
       paymentTermsDays: 30,
+    });
+  });
+});
+
+describe('Bank Transformer', () => {
+  describe('transformBankTransactionExplanation', () => {
+    it('includes hasAttachment true when attachment present', () => {
+      const explanation: FreeAgentBankTransactionExplanation = {
+        url: 'https://api.freeagent.com/v2/bank_transaction_explanations/1',
+        type: 'Payment',
+        dated_on: '2024-01-15',
+        gross_value: '50.00',
+        ec_status: 'UK/Non-EC',
+        marked_for_review: false,
+        is_locked: false,
+        attachment: { file_name: 'receipt.pdf', content_type: 'application/pdf' },
+      };
+      const result = transformBankTransactionExplanation(explanation);
+      expect(result.hasAttachment).toBe(true);
+      expect(result.markedForReview).toBe(false);
+    });
+
+    it('includes hasAttachment false when no attachment', () => {
+      const explanation: FreeAgentBankTransactionExplanation = {
+        url: 'https://api.freeagent.com/v2/bank_transaction_explanations/2',
+        type: 'Payment',
+        dated_on: '2024-01-15',
+        gross_value: '25.00',
+        ec_status: 'UK/Non-EC',
+        marked_for_review: true,
+        is_locked: false,
+      };
+      const result = transformBankTransactionExplanation(explanation);
+      expect(result.hasAttachment).toBe(false);
+      expect(result.markedForReview).toBe(true);
+    });
+
+    it('defaults markedForReview to false when field is absent', () => {
+      const explanation: FreeAgentBankTransactionExplanation = {
+        url: 'https://api.freeagent.com/v2/bank_transaction_explanations/3',
+        type: 'Payment',
+        dated_on: '2024-01-15',
+        gross_value: '10.00',
+        ec_status: 'UK/Non-EC',
+        is_locked: false,
+        // marked_for_review intentionally omitted
+      };
+      const result = transformBankTransactionExplanation(explanation);
+      expect(result.markedForReview).toBe(false);
     });
   });
 });

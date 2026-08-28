@@ -608,9 +608,19 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         inputSchema: zodToJsonSchema(tools.deleteBankTransactionExplanationSchema),
       },
       {
-        name: 'upload_receipt',
-        description: 'Upload a receipt/attachment to a bank transaction explanation (PNG, JPEG, GIF, PDF, max 5MB)',
-        inputSchema: zodToJsonSchema(tools.uploadReceiptSchema),
+        name: 'upload_attachment',
+        description: 'Upload a file from disk to a bill, expense, or bank transaction explanation (PDF, JPEG, PNG, GIF, CSV, XLS, XLSX, ZIP — max 5MB)',
+        inputSchema: zodToJsonSchema(tools.uploadAttachmentSchema),
+      },
+      {
+        name: 'get_attachment',
+        description: 'Get attachment metadata and download URL for an attachment',
+        inputSchema: zodToJsonSchema(tools.getAttachmentSchema),
+      },
+      {
+        name: 'delete_attachment',
+        description: 'Delete an attachment by ID',
+        inputSchema: zodToJsonSchema(tools.deleteAttachmentSchema),
       },
     ],
   }));
@@ -848,10 +858,22 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
             args as tools.DeleteBankTransactionExplanationInput
           );
           break;
-        case 'upload_receipt':
-          result = await tools.uploadReceipt(
+        case 'upload_attachment':
+          result = await tools.uploadAttachment(
             client,
-            args as tools.UploadReceiptInput
+            args as tools.UploadAttachmentInput
+          );
+          break;
+        case 'get_attachment':
+          result = await tools.getAttachment(
+            client,
+            args as tools.GetAttachmentInput
+          );
+          break;
+        case 'delete_attachment':
+          result = await tools.deleteAttachment(
+            client,
+            args as tools.DeleteAttachmentInput
           );
           break;
 
