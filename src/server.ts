@@ -15,10 +15,12 @@ import { config } from './config.js';
 import {
   createTokenStore,
   createTokenManager,
+  createCallbackServer,
   generateAuthorizationUrl,
   exchangeCodeForTokens,
   type TokenManager,
   type TokenStore,
+  type CallbackServer,
 } from './auth/index.js';
 import { createFreeAgentClient, type FreeAgentClient } from './api/index.js';
 import { toMcpError } from './utils/error-handler.js';
@@ -35,6 +37,7 @@ import * as prompts from './prompts/index.js';
 export interface FreeAgentMcpServer {
   server: Server;
   tokenStore: TokenStore;
+  callbackServer: CallbackServer;
   getAuthorizationUrl: (state?: string) => string;
   handleAuthorizationCode: (code: string) => Promise<void>;
   isAuthenticated: () => boolean;
@@ -58,6 +61,15 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
   // Initialize auth
   const tokenStore = createTokenStore(config.tokenEncryptionKey);
   const tokenManager = createTokenManager(tokenStore);
+  const callbackServer = createCallbackServer(
+    (state) => generateAuthorizationUrl(state),
+    async (code) => {
+      const tokens = await exchangeCodeForTokens(code);
+      await tokenManager.setTokens(tokens);
+      contactNameLookup = null;
+      bankAccountNameLookup = null;
+    }
+  );
   let freeAgentClient: FreeAgentClient | null = null;
 
   // Helper to get authenticated client
@@ -622,6 +634,17 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
         description: 'Delete an attachment by ID',
         inputSchema: zodToJsonSchema(tools.deleteAttachmentSchema),
       },
+      // Auth tools
+      {
+        name: 'auth_status',
+        description: 'Report current OAuth authentication state and any in-flight authentication flow.',
+        inputSchema: zodToJsonSchema(tools.authStatusSchema),
+      },
+      {
+        name: 'authenticate',
+        description: 'Start an OAuth flow against FreeAgent. Hybrid behavior: waits inline up to wait_seconds (default 90) then returns {pending} while a 2-minute callback listener stays running. Subsequent auth_status calls report progress.',
+        inputSchema: zodToJsonSchema(tools.authenticateSchema),
+      },
     ],
   }));
 
@@ -629,6 +652,22 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
     const { name, arguments: args } = request.params;
 
     try {
+      // Auth tools do not need an API client and must be dispatchable before
+      // authentication exists — handle them before the lazy getClient() call.
+      switch (name) {
+        case 'auth_status': {
+          const result = await tools.authStatus({ tokenManager, callbackServer });
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+        case 'authenticate': {
+          const result = await tools.authenticate(
+            { tokenManager, callbackServer },
+            args as tools.AuthenticateInput
+          );
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+      }
+
       const client = getClient();
       let result: unknown;
 
@@ -958,6 +997,7 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
   return {
     server,
     tokenStore,
+    callbackServer,
     getAuthorizationUrl: (state?: string) => generateAuthorizationUrl(state),
     handleAuthorizationCode: async (code: string) => {
       const tokens = await exchangeCodeForTokens(code);
