@@ -68,7 +68,10 @@ export function createFreeAgentMcpServer(): FreeAgentMcpServer {
       await tokenManager.setTokens(tokens);
       contactNameLookup = null;
       bankAccountNameLookup = null;
-    }
+    },
+    // Listen on the port in FREEAGENT_REDIRECT_URI so the listener and the
+    // registered redirect URI can't drift apart (falls back to 3000).
+    { port: Number(new URL(config.freeagent.redirectUri).port) || 3000 }
   );
   let freeAgentClient: FreeAgentClient | null = null;
 
