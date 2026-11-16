@@ -156,7 +156,7 @@ export interface FreeAgentBankTransactionExplanation {
   paid_user?: string;
   rebill_type?: 'cost' | 'markup' | 'price';
   rebill_factor?: string;
-  rebill_to_project?: string;
+  project?: string;
   transfer_bank_account?: string;
   linked_transfer_explanation?: string;
   linked_transfer_account?: string;

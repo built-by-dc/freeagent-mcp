@@ -45,7 +45,7 @@ export async function explainTransaction(
       explanationData['sales_tax_rate'] = validated.sales_tax_rate.toString();
     }
     if (validated.project_id) {
-      explanationData['rebill_to_project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
+      explanationData['project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
     }
 
     const response = await client.post<{ bank_transaction: FreeAgentBankTransaction }>(

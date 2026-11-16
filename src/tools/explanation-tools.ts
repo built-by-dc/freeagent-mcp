@@ -41,7 +41,7 @@ function transformExplanation(explanation: FreeAgentBankTransactionExplanation) 
     paid_user: explanation.paid_user ? extractId(explanation.paid_user) : undefined,
     rebill_type: explanation.rebill_type,
     rebill_factor: explanation.rebill_factor ? parseFloat(explanation.rebill_factor) : undefined,
-    rebill_to_project: explanation.rebill_to_project ? extractId(explanation.rebill_to_project) : undefined,
+    project_id: explanation.project ? extractId(explanation.project) : undefined,
     transfer_bank_account: explanation.transfer_bank_account ? extractId(explanation.transfer_bank_account) : undefined,
     linked_transfer_explanation: explanation.linked_transfer_explanation ? extractId(explanation.linked_transfer_explanation) : undefined,
     foreign_currency_value: explanation.foreign_currency_value ? parseFloat(explanation.foreign_currency_value) : undefined,
@@ -139,7 +139,7 @@ export const updateBankTransactionExplanationSchema = z.object({
   gross_value: z.number().optional().describe('Gross value'),
   sales_tax_rate: z.number().optional().describe('Sales tax rate (e.g., 20 for 20%)'),
   ec_status: z.enum(['UK/Non-EC', 'EC Goods', 'EC Services', 'Reverse Charge', 'EC VAT MOSS']).optional(),
-  project_id: z.string().optional().describe('Project ID for rebilling'),
+  project_id: z.string().optional().describe('Project ID to link (add rebill_type to also rebill)'),
   rebill_type: z.enum(['cost', 'markup', 'price']).optional().describe('Rebill type'),
   rebill_factor: z.number().optional().describe('Rebill factor (required for markup/price)'),
   receipt_reference: z.string().optional().describe('Receipt reference number'),
@@ -176,7 +176,7 @@ export async function updateBankTransactionExplanation(
       explanationData['ec_status'] = validated.ec_status;
     }
     if (validated.project_id) {
-      explanationData['rebill_to_project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
+      explanationData['project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
     }
     if (validated.rebill_type) {
       explanationData['rebill_type'] = validated.rebill_type;
@@ -265,7 +265,7 @@ export const createBankTransactionExplanationSchema = z.object({
   transfer_bank_account_id: z.string().optional().describe('Target bank account for transfers'),
 
   // Project rebilling
-  project_id: z.string().optional().describe('Project ID for rebilling'),
+  project_id: z.string().optional().describe('Project ID to link (add rebill_type to also rebill)'),
   rebill_type: z.enum(['cost', 'markup', 'price']).optional(),
   rebill_factor: z.number().optional().describe('Rebill factor (for markup/price)'),
 
@@ -346,7 +346,7 @@ export async function createBankTransactionExplanation(
 
     // Project rebilling
     if (validated.project_id) {
-      explanationData['rebill_to_project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
+      explanationData['project'] = normalizeProjectId(validated.project_id, FREEAGENT_API_BASE);
     }
     if (validated.rebill_type) {
       explanationData['rebill_type'] = validated.rebill_type;
