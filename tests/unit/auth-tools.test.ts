@@ -239,7 +239,7 @@ describe('authenticate — behavior', () => {
     expect(out.error).toBe('timeout');
   });
 
-  it('returns port_3000_in_use when start() rejects with EADDRINUSE', async () => {
+  it('returns callback_port_in_use when start() rejects with EADDRINUSE', async () => {
     const tm = makeTokenManager({ authenticated: false });
     const cb = makeCallbackServer();
     const err = Object.assign(new Error('listen EADDRINUSE'), { code: 'EADDRINUSE' });
@@ -248,7 +248,7 @@ describe('authenticate — behavior', () => {
       { tokenManager: tm, callbackServer: cb },
       {}
     );
-    expect(out.error).toBe('port_3000_in_use');
+    expect(out.error).toBe('callback_port_in_use');
   });
 
   it('skips browser open when open_browser=false', async () => {

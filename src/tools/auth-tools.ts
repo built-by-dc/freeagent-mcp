@@ -83,7 +83,7 @@ export async function authenticate(
   url?: string;
   expires_at?: string;
   message?: string;
-  error?: 'port_3000_in_use' | 'missing_credentials' | 'user_denied' | 'exchange_failed' | 'timeout';
+  error?: 'callback_port_in_use' | 'missing_credentials' | 'user_denied' | 'exchange_failed' | 'timeout';
   detail?: string;
 } & Partial<ReturnType<typeof buildStatus>>> {
   const parsed = authenticateSchema.parse(input);
@@ -108,7 +108,7 @@ export async function authenticate(
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === 'EADDRINUSE') {
-      return { error: 'port_3000_in_use', detail: 'Port 3000 is already in use.' };
+      return { error: 'callback_port_in_use', detail: 'The OAuth callback port (from FREEAGENT_REDIRECT_URI) is already in use.' };
     }
     return { error: 'exchange_failed', detail: (err as Error).message };
   }
